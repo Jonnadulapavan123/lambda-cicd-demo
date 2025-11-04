@@ -1,0 +1,21 @@
+version: 0.2
+
+env:
+  variables:
+    S3_BUCKET: "lambda-artifacts-ap-south-1"
+    LAMBDA_NAME: "MyLambdaFunction"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Installing dependencies..."
+  build:
+    commands:
+      - echo "Packaging Lambda..."
+      - zip -r lambda_code.zip lambda_function.py
+      - echo "Uploading to S3..."
+      - aws s3 cp lambda_code.zip s3://$S3_BUCKET/lambda_code.zip
+      - echo "Updating Lambda..."
+      - aws lambda update-function-code --function-name $LAMBDA_NAME --s3-bucket $S3_BUCKET --s3-key lambda_code.zip --publish
