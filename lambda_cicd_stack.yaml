@@ -1,18 +1,25 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Lambda + S3 + IAM setup for CI/CD pipeline (Region:ap-south-1)
+Description: >
+  CloudFormation Stack to create an S3 bucket, IAM role, and AWS Lambda function
+  for CI/CD deployment demo in ap-south-1 (Mumbai).
 
 Resources:
-
-  ArtifactBucket:
+  # ----------------------------------------------------------
+  # 1️⃣ S3 Bucket for Lambda Deployment Package
+  # ----------------------------------------------------------
+  LambdaS3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: Sub "lambda-cicd-artifacts-${AWS::AccountId}"
+      BucketName: Sub "lambda-cicd-bucket-${AWS::AccountId}-${AWS::Region}"
       AccessControl: Private
 
+  # ----------------------------------------------------------
+  # 2️⃣ IAM Role for Lambda Execution
+  # ----------------------------------------------------------
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: lambda-cicd-execution-role
+      RoleName: Sub "lambda-cicd-execution-role-${AWS::Region}"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -23,28 +30,30 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  # ----------------------------------------------------------
+  # 3️⃣ Lambda Function
+  # ----------------------------------------------------------
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: lambda-cicd-demo
+      FunctionName: lambda-cicd-function
+      Runtime: python3.9
       Handler: lambda_function.lambda_handler
       Role: GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.11
       Code:
-        ZipFile: |
-          def lambda_handler(event, context):
-              return {
-                  "statusCode": 200,
-                  "body": "Initial Lambda from CloudFormation"
-              }
+        S3Bucket: Ref LambdaS3Bucket
+        S3Key: lambda_function.zip
+      Timeout: 10
 
 Outputs:
-  BucketName:
-    Description: S3 Bucket for build artifacts
-    Value: Ref ArtifactBucket
-  LambdaName:
-    Description: Lambda function name
+  LambdaFunctionName:
+    Description: Name of the Lambda Function
     Value: Ref LambdaFunction
-  LambdaArn:
-    Description: Lambda ARN
-    Value: GetAtt LambdaFunction.Arn
+
+  LambdaRoleArn:
+    Description: ARN of the Lambda IAM Execution Role
+    Value: GetAtt LambdaExecutionRole.Arn
+
+  S3BucketName:
+    Description: Name of the S3 bucket used for Lambda deployment
+    Value: Ref LambdaS3Bucket
